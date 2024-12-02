@@ -50,46 +50,74 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [draggedItem, setDraggedItem] = useState<MarkdownFileType | null>(null);
 
+  // 管理所有展开的文件夹 ID
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  // 管理根目录的拖放状态
+  const [isRootDragOver, setIsRootDragOver] = useState<boolean>(false);
+
   useEffect(() => {
-    fetchFiles();
-    fetchFolders();
+    refreshData();
   }, []);
 
+  // 封装刷新数据的方法
+  const refreshData = async () => {
+    try {
+      await Promise.all([fetchFiles(), fetchFolders()]);
+    } catch (err) {
+      console.error("刷新数据失败:", err);
+      setError("刷新数据失败，请稍后重试。");
+    }
+  };
+
   const fetchFiles = async () => {
-    const response = await fetch("/api/files");
-    const data = await response.json();
-    setFiles(data);
+    try {
+      const response = await fetch("/api/files");
+      if (!response.ok) {
+        throw new Error("获取文件失败");
+      }
+      const data = await response.json();
+      setFiles(data);
+    } catch (error) {
+      console.error("获取文件失败:", error);
+      setError("获取文件失败，请稍后重试。");
+    }
   };
 
   const fetchFolders = async () => {
     try {
       const response = await fetch("/api/folders");
+      if (!response.ok) {
+        throw new Error("获取文件夹失败");
+      }
       const data = await response.json();
       setFolders(data);
     } catch (error) {
       console.error("获取文件夹失败:", error);
+      setError("获取文件夹失败，请稍后重试。");
     }
   };
 
   const isFileNameExists = (title: string, excludeId?: string) => {
-    return files.some(file => 
-      file.title.toLowerCase() === title.toLowerCase() && file.id !== excludeId
+    return files.some(file =>
+        file.title.toLowerCase() === title.toLowerCase() && file.id !== excludeId
     );
   };
 
   const isFolderNameExists = (title: string, excludeId?: string) => {
-    return folders.some(folder => 
-      folder.title.toLowerCase() === title.toLowerCase() && folder.id !== excludeId
+    return folders.some(folder =>
+        folder.title.toLowerCase() === title.toLowerCase() && folder.id !== excludeId
     );
   };
 
+  // 重命名文件的逻辑
   const handleFileRename = async (fileId: string, newTitle: string) => {
     if (isFileNameExists(newTitle, fileId)) {
       setError(`文件名 "${newTitle}" 已存在，请使用其他名称`);
       return false;
     }
 
-    const file = files.find(f => f.id === fileId);
+    const file = files.find(f => f.id === fileId) || folders.flatMap(folder => folder.files).find(f => f.id === fileId);
     if (!file) return false;
 
     try {
@@ -103,17 +131,20 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
       });
 
       if (response.ok) {
-        await fetchFiles();
+        await refreshData(); // 使用封装的方法刷新数据
         return true;
       }
     } catch (error) {
       console.error("重命名文件失败:", error);
+      setError("重命名文件失败，请稍后重试。");
     }
     return false;
   };
 
+  // 处理删除文件的逻辑
   const handleFileDelete = async (fileId: string) => {
     try {
+      const file = files.find(f => f.id === fileId) || folders.flatMap(folder => folder.files).find(f => f.id === fileId);
       const response = await fetch(`/api/files/${fileId}`, {
         method: "DELETE",
       });
@@ -122,15 +153,17 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
         if (selectedFile === fileId) {
           onFileSelect("");
         }
-        await fetchFiles();
+        await refreshData(); // 使用封装的方法刷新数据
         return true;
       }
     } catch (error) {
       console.error("删除文件失败:", error);
+      setError("删除文件失败，请稍后重试。");
     }
     return false;
   };
 
+  // 处理重命名文件夹的逻辑
   const handleFolderRename = async (folderId: string, newTitle: string) => {
     if (isFolderNameExists(newTitle, folderId)) {
       setError(`文件夹名称 "${newTitle}" 已存在，请使用其他名称`);
@@ -145,15 +178,17 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
       });
 
       if (response.ok) {
-        await fetchFolders();
+        await refreshData(); // 使用封装的方法刷新数据
         return true;
       }
     } catch (error) {
       console.error("重命名文件夹失败:", error);
+      setError("重命名文件夹失败，请稍后重试。");
     }
     return false;
   };
 
+  // 处理删除文件夹的逻辑
   const handleFolderDelete = async (folderId: string) => {
     try {
       const response = await fetch(`/api/folders/${folderId}`, {
@@ -161,18 +196,20 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
       });
 
       if (response.ok) {
-        await Promise.all([fetchFiles(), fetchFolders()]);
+        await refreshData(); // 使用封装的方法刷新数据
         return true;
       }
     } catch (error) {
       console.error("删除文件夹失败:", error);
+      setError("删除文件夹失败，请稍后重试。");
     }
     return false;
   };
 
+  // 控制中枢，处理所有指令
   const handleOperation = async (newTitle?: string) => {
     if (!currentOperation) return false;
-    
+
     if (currentOperation.type === 'file') {
       if (currentOperation.action === 'rename' && newTitle) {
         return await handleFileRename(currentOperation.item.id, newTitle);
@@ -202,7 +239,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const content = e.target?.result as string;
-      
+
       try {
         const response = await fetch("/api/files", {
           method: "POST",
@@ -216,10 +253,11 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
         });
 
         if (response.ok) {
-          fetchFiles();
+          await refreshData(); // 使用封装的方法刷新数据
         }
       } catch (error) {
         console.error("上传文件失败:", error);
+        setError("上传文件失败，请稍后重试。");
       }
     };
 
@@ -246,12 +284,13 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
 
       if (response.ok) {
         const newFile = await response.json();
-        fetchFiles();
+        await refreshData(); // 使用封装的方法刷新数据
         onFileSelect(newFile.id);
         return true;
       }
     } catch (error) {
       console.error("创建文件失败:", error);
+      setError("创建文件失败，请稍后重试。");
     }
     return false;
   };
@@ -272,11 +311,12 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
       });
 
       if (response.ok) {
-        fetchFolders();
+        await refreshData(); // 使用封装的方法刷新数据
         return true;
       }
     } catch (error) {
       console.error("创建文件夹失败:", error);
+      setError("创建文件夹失败，请稍后重试。");
     }
     return false;
   };
@@ -302,171 +342,232 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
       });
 
       if (response.ok) {
-        await Promise.all([fetchFiles(), fetchFolders()]);
+        await refreshData(); // 使用封装的方法刷新数据
         setDraggedItem(null);
       }
     } catch (error) {
       console.error("移动文件失败:", error);
+      setError("移动文件失败，请稍后重试。");
     }
   };
 
-  const handleDelete = (item: FolderType | MarkdownFileType) => {
-    console.log(item)
-    if (item.type === 'file') {
-      setCurrentOperation({ type: 'file', action: 'delete', item });
-    } else {
-      setCurrentOperation({ type: 'folder', action: 'delete', item });
+  // 切换文件夹展开状态
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(folderId)) {
+        newSet.delete(folderId);
+      } else {
+        newSet.add(folderId);
+      }
+      return newSet;
+    });
+  };
+
+  // 处理根目录的拖放事件
+  const handleRootDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsRootDragOver(true);
+  };
+
+  const handleRootDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsRootDragOver(false);
+  };
+
+  const handleRootDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsRootDragOver(false);
+    if (!draggedItem) return;
+
+    try {
+      const response = await fetch(`/api/files/${draggedItem.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          folderId: null, // 将文件移动到根目录
+        }),
+      });
+
+      if (response.ok) {
+        await refreshData();
+        setDraggedItem(null);
+      }
+    } catch (error) {
+      console.error("移动文件到根目录失败:", error);
+      setError("移动文件失败，请稍后重试。");
     }
-    setError("");
   };
 
   const renderFileTreeItem = (item: FolderType | MarkdownFileType, level = 0) => {
-    if (item.type === 'folder') {
+    const itemType = item.type;
+    if (itemType === 'file' || itemType === 'folder') {
+      const isExpanded = itemType === 'folder' && expandedFolders.has(item.id);
       return (
-        <div key={item.id}>
-          <FileTreeItem
-            item={item}
-            selectedFile={selectedFile}
-            onFileSelect={onFileSelect}
-            onStartDrag={handleStartDrag}
-            onDrop={handleDrop}
-            onRename={() => {
-              setError("");
-              setCurrentOperation({ type: 'folder', action: 'rename', item });
-            }}
-            onDelete={() => handleDelete(item)}
-            level={level}
-          />
-          {item.files.map(file => renderFileTreeItem(file, level + 1))}
-        </div>
-      );
+          <div key={item.id}>
+            <FileTreeItem
+                item={item}
+                selectedFile={selectedFile}
+                onFileSelect={onFileSelect}
+                onStartDrag={handleStartDrag}
+                onDrop={handleDrop}
+                onRename={() => {
+                  setError("");
+                  if (itemType === 'folder') {
+                    setCurrentOperation({
+                      type: 'folder',
+                      action: 'rename',
+                      item: item as Folder,
+                    });
+                  } else {
+                    setCurrentOperation({
+                      type: 'file',
+                      action: 'rename',
+                      item: item as MarkdownFile,
+                    });
+                  }
+                }}
+                onDelete={() => {
+                  setError("");
+                  if (itemType === 'folder') {
+                    setCurrentOperation({
+                      type: 'folder',
+                      action: 'delete',
+                      item: item as Folder,
+                    });
+                  } else {
+                    setCurrentOperation({
+                      type: 'file',
+                      action: 'delete',
+                      item: item as MarkdownFile,
+                    });
+                  }
+                }}
+                level={level}
+                isExpanded={isExpanded}
+                onToggle={() => toggleFolder(item.id)}
+            />
+            {/* 仅当文件夹展开时渲染子文件 */}
+            {item.type === "folder" && isExpanded && item.files.map(file => renderFileTreeItem(file, level + 1))}
+          </div>
+      )
     }
-
-    if (item.folderId === null) {
-      return (
-        <FileTreeItem
-          key={item.id}
-          item={item}
-          selectedFile={selectedFile}
-          onFileSelect={onFileSelect}
-          onStartDrag={handleStartDrag}
-          onDrop={handleDrop}
-          onRename={() => {
-            setError("");
-            setCurrentOperation({ type: 'file', action: 'rename', item });
-          }}
-          onDelete={() => handleDelete(item)}
-          level={level}
-        />
-      );
-    }
-
-    return null;
   };
 
   return (
-    <>
-      <div className={twMerge("p-4", className)}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">文件</h2>
-          <div className="flex gap-2">
-            <button
-              className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
-              onClick={() => {
-                setError("");
-                setIsNewFolderDialogOpen(true);
-              }}
-            >
-              <FolderPlus size={16} className="mr-1" />
-              新建文件夹
-            </button>
-            <button
-              className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
-              onClick={() => {
-                setError("");
-                setIsNewFileDialogOpen(true);
-              }}
-            >
-              <FilePlus size={16} className="mr-1" />
-              新建文件
-            </button>
-            <button
-              className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              上传
-            </button>
+      <>
+        <div className={twMerge("p-4", className)}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">文件</h2>
+            <div className="flex gap-2">
+              <button
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
+                  onClick={() => {
+                    setError("");
+                    setIsNewFolderDialogOpen(true);
+                  }}
+              >
+                <FolderPlus size={16} className="mr-1" />
+                新建文件夹
+              </button>
+              <button
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
+                  onClick={() => {
+                    setError("");
+                    setIsNewFileDialogOpen(true);
+                  }}
+              >
+                <FilePlus size={16} className="mr-1" />
+                新建文件
+              </button>
+              <button
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                  onClick={() => fileInputRef.current?.click()}
+              >
+                上传
+              </button>
+            </div>
+          </div>
+          <input
+              type="file"
+              ref={fileInputRef}
+              accept=".md"
+              className="hidden"
+              onChange={handleFileUpload}
+          />
+          {/* 根目录作为可拖放区域 */}
+          <div
+              className={twMerge(
+                  "space-y-1 p-2 rounded-md",
+                  isRootDragOver ? "bg-blue-50 border border-blue-300" : ""
+              )}
+              onDragOver={handleRootDragOver}
+              onDragLeave={handleRootDragLeave}
+              onDrop={handleRootDrop}
+          >
+            {folders.map(folder => renderFileTreeItem(folder))}
+            {files
+                .filter(file => !file.folderId)
+                .map(file => renderFileTreeItem({ ...file, type: 'file' }))}
           </div>
         </div>
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept=".md"
-          className="hidden"
-          onChange={handleFileUpload}
+
+        <Dialog
+            isOpen={isNewFileDialogOpen}
+            onClose={() => {
+              setIsNewFileDialogOpen(false);
+              setError("");
+            }}
+            onConfirm={handleCreateNewFile}
+            title="新建文档"
+            placeholder="请输入文档名称"
+            error={error}
+            type="input"
         />
-        <div className="space-y-1">
-          {folders.map(folder => renderFileTreeItem(folder))}
-          {files
-            .filter(file => !file.folderId)
-            .map(file => renderFileTreeItem({ ...file, type: 'file' }))}
-        </div>
-      </div>
 
-      <Dialog
-        isOpen={isNewFileDialogOpen}
-        onClose={() => {
-          setIsNewFileDialogOpen(false);
-          setError("");
-        }}
-        onConfirm={handleCreateNewFile}
-        title="新建文档"
-        placeholder="请输入文档名称"
-        error={error}
-        type="input"
-      />
+        <Dialog
+            isOpen={currentOperation?.action === 'rename'}
+            onClose={() => {
+              setCurrentOperation(null);
+              setError("");
+            }}
+            onConfirm={handleOperation}
+            title={`重命名${currentOperation?.type === 'folder' ? '文件夹' : '文件'}`}
+            placeholder="请输入新名称"
+            initialValue={currentOperation?.item.title}
+            error={error}
+            type="input"
+        />
 
-      <Dialog
-        isOpen={currentOperation?.action === 'rename'}
-        onClose={() => {
-          setCurrentOperation(null);
-          setError("");
-        }}
-        onConfirm={handleOperation}
-        title={`重命名${currentOperation?.type === 'folder' ? '文件夹' : '文件'}`}
-        placeholder="请输入新名称"
-        initialValue={currentOperation?.item.title}
-        error={error}
-        type="input"
-      />
+        <Dialog
+            isOpen={currentOperation?.action === 'delete'}
+            onClose={() => setCurrentOperation(null)}
+            onConfirm={handleOperation}
+            title={`删除${currentOperation?.type === 'folder' ? '文件夹' : '文件'}`}
+            description={`确定要删除${currentOperation?.type === 'folder' ? '文件夹' : '文件'} "${currentOperation?.item.title}" 吗？${
+                currentOperation?.type === 'folder' ? '文件夹中的所有文都将被删除。' : ''
+            }此操作不可撤销。`}
+            type="confirm"
+            confirmText="删除"
+            confirmButtonClass="bg-red-500 hover:bg-red-600"
+        />
 
-      <Dialog
-        isOpen={currentOperation?.action === 'delete'}
-        onClose={() => setCurrentOperation(null)}
-        onConfirm={handleOperation}
-        title={`删除${currentOperation?.type === 'folder' ? '文件夹' : '文件'}`}
-        description={`确定要删除${currentOperation?.type === 'folder' ? '文件夹' : '文件'} "${currentOperation?.item.title}" 吗？${
-          currentOperation?.type === 'folder' ? '文件夹中的所有文都将被删除。' : ''
-        }此操作不可撤销。`}
-        type="confirm"
-        confirmText="删除"
-        confirmButtonClass="bg-red-500 hover:bg-red-600"
-      />
-
-      <Dialog
-        isOpen={isNewFolderDialogOpen}
-        onClose={() => {
-          setIsNewFolderDialogOpen(false);
-          setError("");
-        }}
-        onConfirm={handleCreateFolder}
-        title="新建文件夹"
-        placeholder="请输入文件夹名称"
-        error={error}
-        type="input"
-      />
-    </>
+        <Dialog
+            isOpen={isNewFolderDialogOpen}
+            onClose={() => {
+              setIsNewFolderDialogOpen(false);
+              setError("");
+            }}
+            onConfirm={handleCreateFolder}
+            title="新建文件夹"
+            placeholder="请输入文件夹名称"
+            error={error}
+            type="input"
+        />
+      </>
   );
 };
 
-export default FileList; 
+export default FileList;
