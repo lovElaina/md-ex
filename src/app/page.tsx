@@ -5,6 +5,9 @@ import dynamic from "next/dynamic";
 import { Editor } from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
+import "katex/dist/katex.min.css"
 
 const FileList = dynamic(() => import("@/components/FileList"), { ssr: false });
 
@@ -71,6 +74,7 @@ const HomePage = () => {
             height="100vh"
             defaultLanguage="markdown"
             value={markdown}
+            language="markdown"
             onChange={handleEditorChange}
             theme="vs-light"
             options={{
@@ -82,7 +86,7 @@ const HomePage = () => {
         </div>
         <div className="w-1/2 overflow-auto p-4 bg-white">
           <article className="prose prose-slate max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
               {markdown}
             </ReactMarkdown>
           </article>

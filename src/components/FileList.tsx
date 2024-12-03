@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { twMerge } from "tailwind-merge";
-import { Pencil, Trash2, FolderPlus, FilePlus } from "lucide-react";
+import { FolderPlus, FilePlus } from "lucide-react";
 import Dialog from "./Dialog";
 import FileTreeItem, { FolderType, MarkdownFileType } from "./FileTreeItem";
 
@@ -144,7 +144,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
   // 处理删除文件的逻辑
   const handleFileDelete = async (fileId: string) => {
     try {
-      const file = files.find(f => f.id === fileId) || folders.flatMap(folder => folder.files).find(f => f.id === fileId);
+      //files.find(f => f.id === fileId) || folders.flatMap(folder => folder.files).find(f => f.id === fileId);
       const response = await fetch(`/api/files/${fileId}`, {
         method: "DELETE",
       });
@@ -327,6 +327,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
     }
   };
 
+  // 修改 handleDrop 函数，使其能够处理 'root' 作为目标
   const handleDrop = async (targetFolderId: string) => {
     if (!draggedItem) return;
 
@@ -446,8 +447,8 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
                   }
                 }}
                 level={level}
-                isExpanded={isExpanded}
-                onToggle={() => toggleFolder(item.id)}
+                isExpanded={isExpanded} // 传递展开状态
+                onToggle={() => toggleFolder(item.id)} // 传递切换方法
             />
             {/* 仅当文件夹展开时渲染子文件 */}
             {item.type === "folder" && isExpanded && item.files.map(file => renderFileTreeItem(file, level + 1))}
@@ -459,9 +460,8 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
   return (
       <>
         <div className={twMerge("p-4", className)}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">文件</h2>
-            <div className="flex gap-2">
+          <div className="flex  items-center justify-between mb-4">
+            <div className="flex flex-col gap-2">
               <button
                   className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
                   onClick={() => {
@@ -514,6 +514,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
           </div>
         </div>
 
+        {/* Dialog 组件 */}
         <Dialog
             isOpen={isNewFileDialogOpen}
             onClose={() => {
