@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { twMerge } from "tailwind-merge";
-import { FolderPlus, FilePlus } from "lucide-react";
+import {FolderPlus, FilePlus, FileUpIcon, Upload} from "lucide-react";
 import Dialog from "./Dialog";
 import FileTreeItem, { FolderType, MarkdownFileType } from "./FileTreeItem";
 
@@ -47,6 +47,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
   const [error, setError] = useState<string>("");
   const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [draggedItem, setDraggedItem] = useState<MarkdownFileType | null>(null);
 
@@ -230,9 +231,13 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    event.target.value = "";
+
     const title = file.name.replace(/\.md$/, "");
     if (isFileNameExists(title)) {
-      alert(`文件名 "${title}" 已存在，请重命名后重试`);
+      console.log(isAlertDialogOpen)
+      setIsAlertDialogOpen(true);
+      //setError(`文件名 "${title}" 已存在，请使用其他名称`);
       return;
     }
 
@@ -461,9 +466,9 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
       <>
         <div className={twMerge("p-4", className)}>
           <div className="flex  items-center justify-between mb-4">
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 flex-1">
               <button
-                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
+                  className="px-3 py-3 text-sm bg-blue-500 text-white hover:bg-blue-600 flex items-center justify-center"
                   onClick={() => {
                     setError("");
                     setIsNewFolderDialogOpen(true);
@@ -473,7 +478,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
                 新建文件夹
               </button>
               <button
-                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
+                  className="px-3 py-3 text-sm bg-blue-500 text-white  hover:bg-blue-600 flex items-center justify-center"
                   onClick={() => {
                     setError("");
                     setIsNewFileDialogOpen(true);
@@ -483,10 +488,11 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
                 新建文件
               </button>
               <button
-                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                  className="px-3 py-3 text-sm bg-blue-500 text-white  hover:bg-blue-600 flex items-center justify-center"
                   onClick={() => fileInputRef.current?.click()}
               >
-                上传
+                <Upload size={16} className="mr-1" />
+                上传文件
               </button>
             </div>
           </div>
@@ -500,7 +506,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
           {/* 根目录作为可拖放区域 */}
           <div
               className={twMerge(
-                  "space-y-1 p-2 rounded-md",
+                  "space-y-1 p-2",
                   isRootDragOver ? "bg-blue-50 border border-blue-300" : ""
               )}
               onDragOver={handleRootDragOver}
@@ -566,6 +572,23 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
             placeholder="请输入文件夹名称"
             error={error}
             type="input"
+        />
+
+        <Dialog
+            isOpen={isAlertDialogOpen}
+            onClose={() => {
+              setIsAlertDialogOpen(false);
+              setError("");
+            }}
+            type="error"
+            confirmText="确定"
+            onConfirm={() => {
+              setIsAlertDialogOpen(false);
+              setError("");
+            }}
+            title="错误"
+            description="文件名重复"
+            confirmButtonClass="bg-red-500 hover:bg-red-600"
         />
       </>
   );
