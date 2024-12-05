@@ -16,11 +16,21 @@ model Folder {
 }
 
 model MarkdownFile {
-  id        String    @id @default(cuid())
+  id        String      @id @default(cuid())
   title     String
   content   String
   folderId  String?
-  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-} 
+  folder    Folder?     @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  Milestone Milestone[]
+}
+
+model Milestone {
+  id             String       @id @default(cuid())
+  name           String // 里程碑名称
+  content        String // 快照内容
+  createdAt      DateTime     @default(now())
+  markdownFile   MarkdownFile @relation(fields: [markdownFileId], references: [id], onDelete: Cascade)
+  markdownFileId String
+}

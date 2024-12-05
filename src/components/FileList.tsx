@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { twMerge } from "tailwind-merge";
-import {FolderPlus, FilePlus, FileUpIcon, Upload} from "lucide-react";
+import {FolderPlus, FilePlus, Upload} from "lucide-react";
 import Dialog from "./Dialog";
 import FileTreeItem, { FolderType, MarkdownFileType } from "./FileTreeItem";
 
@@ -474,7 +474,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
                     setIsNewFolderDialogOpen(true);
                   }}
               >
-                <FolderPlus size={16} className="mr-1" />
+                <FolderPlus size={16} className="mr-1"/>
                 新建文件夹
               </button>
               <button
@@ -484,14 +484,14 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
                     setIsNewFileDialogOpen(true);
                   }}
               >
-                <FilePlus size={16} className="mr-1" />
+                <FilePlus size={16} className="mr-1"/>
                 新建文件
               </button>
               <button
                   className="px-3 py-3 text-sm bg-blue-500 text-white  hover:bg-blue-600 flex items-center justify-center"
                   onClick={() => fileInputRef.current?.click()}
               >
-                <Upload size={16} className="mr-1" />
+                <Upload size={16} className="mr-1"/>
                 上传文件
               </button>
             </div>
@@ -504,6 +504,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
               onChange={handleFileUpload}
           />
           {/* 根目录作为可拖放区域 */}
+          <h3 className="text-xl font-semibold mb-4">文件列表</h3>
           <div
               className={twMerge(
                   "space-y-1 p-2",
@@ -516,7 +517,7 @@ const FileList = ({ selectedFile, onFileSelect, className }: FileListProps) => {
             {folders.map(folder => renderFileTreeItem(folder))}
             {files
                 .filter(file => !file.folderId)
-                .map(file => renderFileTreeItem({ ...file, type: 'file' }))}
+                .map(file => renderFileTreeItem({...file, type: 'file'}))}
           </div>
         </div>
 
