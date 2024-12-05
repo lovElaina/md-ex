@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
+import { prisma } from "@/lib/prisma";
 // 获取所有文件列表
 export async function GET() {
   try {
@@ -29,7 +26,7 @@ export async function GET() {
   } catch (error) {
     console.error("获取文件列表错误:", error);
     return NextResponse.json(
-      { error: "获取文件列表失败", details: error instanceof Error ? error.message : String(error) }, 
+      { error: "获取文件列表失败", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   } finally {
@@ -57,4 +54,4 @@ export async function POST(request: Request) {
   } finally {
     await prisma.$disconnect();
   }
-} 
+}

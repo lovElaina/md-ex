@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
-
+import { prisma } from "@/lib/prisma";
 // 获取单个文件内容
 export async function GET(
   request: Request,
@@ -14,11 +12,11 @@ export async function GET(
         id: params.id,
       },
     });
-    
+
     if (!file) {
       return NextResponse.json({ error: "文件不存在" }, { status: 404 });
     }
-    
+
     return NextResponse.json(file);
   } catch (error) {
     return NextResponse.json({ error: "获取文件失败" }, { status: 500 });
@@ -82,4 +80,4 @@ export async function PATCH(
   } catch (error) {
     return NextResponse.json({ error: "移动文件失败" }, { status: 500 });
   }
-} 
+}

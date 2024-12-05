@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 
 type DialogProps = {
@@ -9,18 +9,18 @@ type DialogProps = {
   placeholder?: string;
   initialValue?: string;
   error?: string;
-  type?: 'input' | 'confirm';
+  type?: 'input' | 'confirm' | 'error';
   description?: string;
   confirmText?: string;
   confirmButtonClass?: string;
 };
 
-const Dialog = ({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  title, 
-  placeholder, 
+const Dialog = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  placeholder,
   initialValue = '',
   error,
   type = 'input',
@@ -81,18 +81,21 @@ const Dialog = ({
             </>
           )}
           <div className="flex justify-end gap-3 mt-4">
+            {type !== 'error' && (
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 text-sm text-zinc-600 hover:text-zinc-800"
+                >
+                  取消
+                </button>
+            )}
+
             <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-zinc-600 hover:text-zinc-800"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              className={twMerge(
-                "px-4 py-2 text-sm text-white rounded-md",
-                confirmButtonClass || "bg-blue-500 hover:bg-blue-600"
+                type="submit"
+                className={twMerge(
+                    "px-4 py-2 text-sm text-white rounded-md",
+                    confirmButtonClass || "bg-blue-500 hover:bg-blue-600"
               )}
             >
               {confirmText}
@@ -104,4 +107,4 @@ const Dialog = ({
   );
 };
 
-export default Dialog; 
+export default Dialog;

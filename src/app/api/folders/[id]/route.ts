@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
   request: Request,
@@ -46,4 +44,4 @@ export async function PUT(
   } catch (error) {
     return NextResponse.json({ error: "更新文件夹失败" }, { status: 500 });
   }
-} 
+}
